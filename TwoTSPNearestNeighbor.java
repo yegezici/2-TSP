@@ -8,16 +8,24 @@ import java.util.List;
 public class TwoTSPNearestNeighbor {
 
     public static void main(String[] args) {
-        String inputFile = "input.txt"; // Input file path
+        String inputFile = "example-input-3.txt"; // Input file path
         try {
             int[][] distanceMatrix = readInput(inputFile);
+            int startCity1 = 0; // Starting city index for salesman 1
+            int startCity2 = 1; // Starting city index for salesman 2
 
-            int[] path1 = nearestNeighbor(distanceMatrix);
+            int[][] paths = nearestNeighborForTwo(distanceMatrix, startCity1, startCity2);
+            int[] path1 = paths[0];
+            int[] path2 = paths[1];
+
             int cost1 = calculateCost(path1, distanceMatrix);
-
-            int[] path2 = nearestNeighbor(distanceMatrix);
             int cost2 = calculateCost(path2, distanceMatrix);
 
+            System.out.println("Path 1: " + Arrays.toString(path1));
+            System.err.println("-----------------------------------------------------------");
+            System.out.println("Path 2: " + Arrays.toString(path2));
+            System.out.println("Total distance for salesman 1: " + cost1);
+            System.out.println("Total distance for salesman 2: " + cost2);
             System.out.println("Total distance for both salesmen: " + (cost1 + cost2));
         } catch (IOException e) {
             e.printStackTrace();
@@ -54,38 +62,56 @@ public class TwoTSPNearestNeighbor {
         return (int) Math.round(Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2)));
     }
 
-    public static int[] nearestNeighbor(int[][] graph) {
+    public static int[][] nearestNeighborForTwo(int[][] graph, int start1, int start2) {
         int numCities = graph.length;
         boolean[] visited = new boolean[numCities];
-        int[] path = new int[numCities];
-        Arrays.fill(path, -1); // Initialize path with -1, indicating unvisited cities
-        int currentCity = 0; // Start from city 0
+        int[] path1 = new int[numCities + 1];
+        int[] path2 = new int[numCities + 1];
+        int pathIndex1 = 0, pathIndex2 = 0;
 
-        visited[currentCity] = true;
-        path[0] = currentCity;
+        int currentCity1 = start1;
+        int currentCity2 = start2;
+        
+        visited[start1] = true;
+        visited[start2] = true;
+        
+        path1[pathIndex1++] = start1;
+        path2[pathIndex2++] = start2;
 
-        for (int i = 1; i < numCities; i++) {
-            int nearestNeighbor = -1;
-            int nearestDistance = Integer.MAX_VALUE;
+        while (pathIndex1 + pathIndex2 < numCities) {
+            int nearestNeighbor1 = -1;
+            int nearestNeighbor2 = -1;
+            int nearestDistance1 = Integer.MAX_VALUE;
+            int nearestDistance2 = Integer.MAX_VALUE;
 
             for (int city = 0; city < numCities; city++) {
-                if (!visited[city] && graph[currentCity][city] < nearestDistance) {
-                    nearestNeighbor = city;
-                    nearestDistance = graph[currentCity][city];
+                if (!visited[city] && graph[currentCity1][city] < nearestDistance1) {
+                    nearestNeighbor1 = city;
+                    nearestDistance1 = graph[currentCity1][city];
+                }
+                if (!visited[city] && graph[currentCity2][city] < nearestDistance2) {
+                    nearestNeighbor2 = city;
+                    nearestDistance2 = graph[currentCity2][city];
                 }
             }
 
-            if (nearestNeighbor == -1) {
-                System.out.println("Warning: No nearest neighbor found for city " + currentCity);
-                break;
+            if (nearestNeighbor1 != -1 && (nearestNeighbor2 == -1 || nearestDistance1 <= nearestDistance2)) {
+                path1[pathIndex1++] = nearestNeighbor1;
+                currentCity1 = nearestNeighbor1;
+                visited[nearestNeighbor1] = true;
             }
-
-            path[i] = nearestNeighbor;
-            currentCity = nearestNeighbor;
-            visited[nearestNeighbor] = true;
+            
+            if (nearestNeighbor2 != -1 && (nearestNeighbor1 == -1 || nearestDistance2 < nearestDistance1)) {
+                path2[pathIndex2++] = nearestNeighbor2;
+                currentCity2 = nearestNeighbor2;
+                visited[nearestNeighbor2] = true;
+            }
         }
 
-        return path;
+        path1[pathIndex1++] = start1;
+        path2[pathIndex2++] = start2;
+
+        return new int[][]{Arrays.copyOf(path1, pathIndex1), Arrays.copyOf(path2, pathIndex2)};
     }
 
     public static int calculateCost(int[] path, int[][] graph) {

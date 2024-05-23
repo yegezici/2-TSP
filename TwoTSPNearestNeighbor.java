@@ -12,11 +12,18 @@ public class TwoTSPNearestNeighbor {
         try {
             int[][] distanceMatrix = readInput(inputFile);
             int startCity = 0; // Starting city index
-            int[] path = nearestNeighbor(distanceMatrix, startCity);
-            int cost = calculateCost(path, distanceMatrix);
 
-            System.out.println("Path: " + Arrays.toString(path));
-            System.out.println("Cost: " + cost);
+            int[] path1 = nearestNeighbor(distanceMatrix, startCity);
+            int cost1 = calculateCost(path1, distanceMatrix);
+
+            int[] path2 = nearestNeighbor(distanceMatrix, (startCity + 1) % distanceMatrix.length);
+            int cost2 = calculateCost(path2, distanceMatrix);
+
+            System.out.println("Path 1: " + Arrays.toString(path1));
+            System.out.println("Total distance for salesman 1: " + cost1);
+            System.out.println("Path 2: " + Arrays.toString(path2));
+            System.out.println("Total distance for salesman 2: " + cost2);
+            System.out.println("Total distance for both salesmen: " + (cost1 + cost2));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -74,6 +81,11 @@ public class TwoTSPNearestNeighbor {
                     }
                 }
 
+                if (nearestNeighbor == -1) {
+                    System.out.println("Warning: No nearest neighbor found for city " + currentCity);
+                    return Arrays.copyOf(path, pathIndex);
+                }
+
                 path[pathIndex++] = nearestNeighbor;
                 currentCity = nearestNeighbor;
                 visited[nearestNeighbor] = true;
@@ -82,7 +94,7 @@ public class TwoTSPNearestNeighbor {
 
         path[pathIndex++] = start;
 
-        return path;
+        return Arrays.copyOf(path, pathIndex);
     }
 
     public static int calculateCost(int[] path, int[][] graph) {

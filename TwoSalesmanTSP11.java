@@ -1,0 +1,285 @@
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.*;
+
+public class TwoSalesmenTSP11 {
+
+    private final double[][] graph;
+    private final int V;
+
+    public TwoSalesmenTSP11(double[][] graph) {
+        this.graph = graph;
+        this.V = graph.length;
+    }
+
+    public List<List<Integer>> findTSPPaths() {
+        ChristofidesAlgorithm christofides = new ChristofidesAlgorithm(graph);
+        List<Integer> tspPath = christofides.findTSPPath();
+
+        // Use dynamic programming to find the optimal split of the path
+        return optimalSplitPath(tspPath);
+    }
+
+    private List<List<Integer>> optimalSplitPath(List<Integer> tspPath) {
+        int n = tspPath.size();
+        double[][] dp = new double[n + 1][n + 1];
+        int[][] split = new int[n + 1][n + 1];
+
+        for (int i = 0; i <= n; i++) {
+            for (int j = 0; j <= n; j++) {
+                dp[i][j] = Double.MAX_VALUE;
+            }
+        }
+
+        dp[0][0] = 0;
+
+        for (int i = 1; i <= n; i++) {
+            for (int j = 0; j <= i; j++) {
+                if (j > 0) {
+                    double dist1 = calculatePathDistance(tspPath.subList(0, j));
+                    dp[i][j] = Math.min(dp[i][j], dp[i - 1][j - 1] + dist1);
+                    split[i][j] = j;
+                }
+                if (i > j) {
+                    double dist2 = calculatePathDistance(tspPath.subList(j, i));
+                    dp[i][j] = Math.min(dp[i][j], dp[i - 1][j] + dist2);
+                    split[i][j] = j;
+                }
+            }
+        }
+
+        List<Integer> path1 = new ArrayList<>();
+        List<Integer> path2 = new ArrayList<>();
+
+        int i = n;
+        int j = n / 2;
+        while (i > 0) {
+            int s = split[i][j];
+            if (j == s) {
+                path2.add(tspPath.get(i - 1));
+            } else {
+                path1.add(tspPath.get(i - 1));
+                j--;
+            }
+            i--;
+        }
+
+        Collections.reverse(path1);
+        Collections.reverse(path2);
+
+        return Arrays.asList(path1, path2);
+    }
+
+    private double calculatePathDistance(List<Integer> path) {
+        double totalDistance = 0.0;
+        for (int i = 0; i < path.size() - 1; i++) {
+            totalDistance += graph[path.get(i)][path.get(i + 1)];
+        }
+        return totalDistance;
+    }
+
+    private static class ChristofidesAlgorithm {
+
+        private final double[][] graph;
+        private final int V;
+
+        public ChristofidesAlgorithm(double[][] graph) {
+            this.graph = graph;
+            this.V = graph.length;
+        }
+
+        public List<Integer> findTSPPath() {
+            List<Edge> mstEdges = findMST();
+            Set<Integer> oddDegreeVertices = findOddDegreeVertices(mstEdges);
+            List<Edge> minWeightMatching = findMinWeightMatching(oddDegreeVertices);
+            List<Edge> eulerianCircuitEdges = new ArrayList<>(mstEdges);
+            eulerianCircuitEdges.addAll(minWeightMatching);
+            List<Integer> eulerianCircuit = findEulerianCircuit(eulerianCircuitEdges);
+            return createHamiltonianCircuit(eulerianCircuit);
+        }
+
+        private List<Edge> findMST() {
+            boolean[] inMST = new boolean[V];
+            double[] key = new double[V];
+            int[] parent = new int[V];
+            PriorityQueue<Edge> pq = new PriorityQueue<>(Comparator.comparingDouble(e -> e.weight));
+
+            Arrays.fill(key, Double.MAX_VALUE);
+            key[0] = 0;
+            pq.add(new Edge(-1, 0, 0));  // Start with the first node
+
+            List<Edge> mstEdges = new ArrayList<>();
+            while (!pq.isEmpty()) {
+                Edge edge = pq.poll();
+                int u = edge.to;
+                if (inMST[u]) continue;
+                inMST[u] = true;
+                if (edge.from != -1) mstEdges.add(edge);
+
+                for (int v = 0; v < V; v++) {
+                    if (graph[u][v] != 0 && !inMST[v] && graph[u][v] < key[v]) {
+                        parent[v] = u;
+                        key[v] = graph[u][v];
+                        pq.add(new Edge(u, v, graph[u][v]));
+                    }
+                }
+            }
+            return mstEdges;
+        }
+
+        private Set<Integer> findOddDegreeVertices(List<Edge> mstEdges) {
+            int[] degree = new int[V];
+            for (Edge edge : mstEdges) {
+                degree[edge.from]++;
+                degree[edge.to]++;
+            }
+
+            Set<Integer> oddDegreeVertices = new HashSet<>();
+            for (int i = 0; i < V; i++) {
+                if (degree[i] % 2 != 0) {
+                    oddDegreeVertices.add(i);
+                }
+            }
+            return oddDegreeVertices;
+        }
+
+        private List<Edge> findMinWeightMatching(Set<Integer> oddDegreeVertices) {
+            List<Integer> vertices = new ArrayList<>(oddDegreeVertices);
+            List<Edge> matching = new ArrayList<>();
+
+            while (!vertices.isEmpty()) {
+                int v = vertices.get(0);
+                int closest = -1;
+                double minWeight = Double.MAX_VALUE;
+
+                for (int u : vertices) {
+                    if (v != u && graph[v][u] < minWeight) {
+                        minWeight = graph[v][u];
+                        closest = u;
+                    }
+                }
+
+                matching.add(new Edge(v, closest, graph[v][closest]));
+                vertices.remove(Integer.valueOf(v));
+                vertices.remove(Integer.valueOf(closest));
+            }
+
+            return matching;
+        }
+
+        private List<Integer> findEulerianCircuit(List<Edge> eulerianCircuitEdges) {
+            Map<Integer, List<Integer>> adj = new HashMap<>();
+            for (Edge edge : eulerianCircuitEdges) {
+                adj.computeIfAbsent(edge.from, k -> new ArrayList<>()).add(edge.to);
+                adj.computeIfAbsent(edge.to, k -> new ArrayList<>()).add(edge.from);
+            }
+
+            List<Integer> circuit = new ArrayList<>();
+            Stack<Integer> currPath = new Stack<>();
+            currPath.push(0);
+            int currVertex = 0;
+
+            while (!currPath.isEmpty()) {
+                if (adj.get(currVertex) != null && !adj.get(currVertex).isEmpty()) {
+                    currPath.push(currVertex);
+                    int nextVertex = adj.get(currVertex).remove(0);
+                    adj.get(nextVertex).remove(Integer.valueOf(currVertex));
+                    currVertex = nextVertex;
+                } else {
+                    circuit.add(currVertex);
+                    currVertex = currPath.pop();
+                }
+            }
+
+            return circuit;
+        }
+
+        private List<Integer> createHamiltonianCircuit(List<Integer> eulerianCircuit) {
+            List<Integer> hamiltonianCircuit = new ArrayList<>();
+            Set<Integer> visited = new HashSet<>();
+            for (int vertex : eulerianCircuit) {
+                if (visited.add(vertex)) {
+                    hamiltonianCircuit.add(vertex);
+                }
+            }
+            hamiltonianCircuit.add(hamiltonianCircuit.get(0)); // Return to the starting point
+            return hamiltonianCircuit;
+        }
+
+        private static class Edge {
+            int from;
+            int to;
+            double weight;
+
+            Edge(int from, int to, double weight) {
+                this.from = from;
+                this.to = to;
+                this.weight = weight;
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        
+        Scanner scan = new Scanner(System.in);
+        String filename = "example-input-1.txt";
+        List<City> cities = new ArrayList<>();
+
+        try (Scanner fileScanner = new Scanner(new File(filename))) {
+            while (fileScanner.hasNextLine()) {
+                String[] parts = fileScanner.nextLine().split(" ");
+                int id = Integer.parseInt(parts[0]);
+                double x = Double.parseDouble(parts[1]);
+                double y = Double.parseDouble(parts[2]);
+                cities.add(new City(id, x, y));
+            }
+        } catch (FileNotFoundException e) {
+            System.err.println("File not found: " + filename);
+            return;
+        }
+
+        
+
+        int V = cities.size();
+        double[][] graph = new double[V][V];
+
+        for (int i = 0; i < V; i++) {
+            for (int j = 0; j < V; j++) {
+                if (i != j) {
+                    graph[i][j] = euclideanDistance(cities.get(i), cities.get(j));
+                } else {
+                    graph[i][j] = 0;
+                }
+            }
+        }
+
+        TwoSalesmenTSP11 tsp = new TwoSalesmenTSP11(graph);
+        List<List<Integer>> paths = tsp.findTSPPaths();
+
+        double distance1 = tsp.calculatePathDistance(paths.get(0));
+        double distance2 = tsp.calculatePathDistance(paths.get(1));
+
+        System.out.println("Total distance: " + (int)(distance1 + distance2));
+        System.out.println("Approximate TSP path for salesman 1: " + paths.get(0));
+        System.out.println("Total distance for salesman 1: " + (int)distance1);
+        System.out.println("Number of cities visited by salesman 1: " + paths.get(0).size());
+        System.out.println("Approximate TSP path for salesman 2: " + paths.get(1));
+        System.out.println("Total distance for salesman 2: " + (int)distance2);
+        System.out.println("Number of cities visited by salesman 2: " + paths.get(1).size());
+    }
+
+    private static double euclideanDistance(City a, City b) {
+        return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
+    }
+
+    private static class City {
+        int id;
+        double x, y;
+
+        City(int id, double x, double y) {
+            this.id = id;
+            this.x = x;
+            this.y = y;
+        }
+    }
+}

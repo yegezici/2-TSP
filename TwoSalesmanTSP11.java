@@ -2,80 +2,88 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
 
-public class TwoSalesmenTSP11 {
+public class TwoSalesmenTSP {
 
     private final double[][] graph;
     private final int V;
 
-    public TwoSalesmenTSP11(double[][] graph) {
+    public TwoSalesmenTSP(double[][] graph) {
         this.graph = graph;
         this.V = graph.length;
     }
 
-    public List<List<Integer>> findTSPPaths() {
+    public List<int[]> findTSPPaths() {
         ChristofidesAlgorithm christofides = new ChristofidesAlgorithm(graph);
         List<Integer> tspPath = christofides.findTSPPath();
 
-        // Use dynamic programming to find the optimal split of the path
-        return optimalSplitPath(tspPath);
+        // Split the TSP path into two subtours
+        List<int[]> paths = splitPath(tspPath);
+
+        // Optimize the paths using 2-opt algorithm
+        paths.set(0, optimizePath(paths.get(0)));
+        paths.set(1, optimizePath(paths.get(1)));
+
+        return paths;
     }
 
-    private List<List<Integer>> optimalSplitPath(List<Integer> tspPath) {
-        int n = tspPath.size();
-        double[][] dp = new double[n + 1][n + 1];
-        int[][] split = new int[n + 1][n + 1];
+    private List<int[]> splitPath(List<Integer> tspPath) {
+        int halfSize = tspPath.size() / 2;
+        int[] path1 = new int[halfSize];
+        int[] path2 = new int[tspPath.size() - halfSize];
 
-        for (int i = 0; i <= n; i++) {
-            for (int j = 0; j <= n; j++) {
-                dp[i][j] = Double.MAX_VALUE;
-            }
-        }
+        path1[0] = tspPath.get(0);  // Ensure starting city (0) is visited by salesman 1
+        int idx1 = 1, idx2 = 0;
 
-        dp[0][0] = 0;
-
-        for (int i = 1; i <= n; i++) {
-            for (int j = 0; j <= i; j++) {
-                if (j > 0) {
-                    double dist1 = calculatePathDistance(tspPath.subList(0, j));
-                    dp[i][j] = Math.min(dp[i][j], dp[i - 1][j - 1] + dist1);
-                    split[i][j] = j;
-                }
-                if (i > j) {
-                    double dist2 = calculatePathDistance(tspPath.subList(j, i));
-                    dp[i][j] = Math.min(dp[i][j], dp[i - 1][j] + dist2);
-                    split[i][j] = j;
-                }
-            }
-        }
-
-        List<Integer> path1 = new ArrayList<>();
-        List<Integer> path2 = new ArrayList<>();
-
-        int i = n;
-        int j = n / 2;
-        while (i > 0) {
-            int s = split[i][j];
-            if (j == s) {
-                path2.add(tspPath.get(i - 1));
+        for (int i = 1; i < tspPath.size(); i++) {
+            if (i % 2 == 0 && idx1 < halfSize) {
+                path1[idx1++] = tspPath.get(i);
             } else {
-                path1.add(tspPath.get(i - 1));
-                j--;
+                path2[idx2++] = tspPath.get(i);
             }
-            i--;
         }
 
-        Collections.reverse(path1);
-        Collections.reverse(path2);
+        // Remove city 0 from path2 if it is there
+        path2 = Arrays.stream(path2).filter(city -> city != 0).toArray();
 
         return Arrays.asList(path1, path2);
     }
 
-    private double calculatePathDistance(List<Integer> path) {
+    private double calculatePathDistance(int[] path) {
         double totalDistance = 0.0;
-        for (int i = 0; i < path.size() - 1; i++) {
-            totalDistance += graph[path.get(i)][path.get(i + 1)];
+        for (int i = 0; i < path.length - 1; i++) {
+            totalDistance += graph[path[i]][path[i + 1]];
         }
+        totalDistance += graph[path[path.length - 1]][path[0]]; // Returning to the start point
         return totalDistance;
+    }
+
+    private int[] optimizePath(int[] path) {
+        boolean improvement = true;
+        while (improvement) {
+            improvement = false;
+            for (int i = 1; i < path.length - 2; i++) {
+                for (int j = i + 1; j < path.length - 1; j++) {
+                    if (j - i == 1) continue;  // Skip adjacent nodes
+                    double delta = -graph[path[i]][path[i + 1]] - graph[path[j]][path[j + 1]]
+                            + graph[path[i]][path[j]] + graph[path[i + 1]][path[j + 1]];
+                    if (delta < 0) {
+                        reverseSegment(path, i + 1, j);
+                        improvement = true;
+                    }
+                }
+            }
+        }
+        return path;
+    }
+
+    private void reverseSegment(int[] path, int start, int end) {
+        while (start < end) {
+            int temp = path[start];
+            path[start] = path[end];
+            path[end] = temp;
+            start++;
+            end--;
+        }
     }
 
     private static class ChristofidesAlgorithm {
@@ -220,9 +228,9 @@ public class TwoSalesmenTSP11 {
     }
 
     public static void main(String[] args) {
-        
+       
         Scanner scan = new Scanner(System.in);
-        String filename = "example-input-1.txt";
+        String filename = "example-input-3.txt";
         List<City> cities = new ArrayList<>();
 
         try (Scanner fileScanner = new Scanner(new File(filename))) {
@@ -253,28 +261,31 @@ public class TwoSalesmenTSP11 {
             }
         }
 
-        TwoSalesmenTSP11 tsp = new TwoSalesmenTSP11(graph);
-        List<List<Integer>> paths = tsp.findTSPPaths();
+        TwoSalesmenTSP tsp = new TwoSalesmenTSP(graph);
+        List<int[]> paths = tsp.findTSPPaths();
 
         double distance1 = tsp.calculatePathDistance(paths.get(0));
         double distance2 = tsp.calculatePathDistance(paths.get(1));
 
-        System.out.println("Total distance: " + (int)(distance1 + distance2));
-        System.out.println("Approximate TSP path for salesman 1: " + paths.get(0));
-        System.out.println("Total distance for salesman 1: " + (int)distance1);
-        System.out.println("Number of cities visited by salesman 1: " + paths.get(0).size());
-        System.out.println("Approximate TSP path for salesman 2: " + paths.get(1));
-        System.out.println("Total distance for salesman 2: " + (int)distance2);
-        System.out.println("Number of cities visited by salesman 2: " + paths.get(1).size());
+        //System.out.println("Salesman 1 Path: " + Arrays.toString(paths.get(0)));
+        System.out.println("Salesman 1 Distance: " + distance1);
+
+        //System.out.println("Salesman 2 Path: " + Arrays.toString(paths.get(1)));
+        System.out.println("Salesman 2 Distance: " + distance2);
+        System.out.println("TOTAL DISTANCE: " + (distance1 + distance2));
+    
+    
     }
 
-    private static double euclideanDistance(City a, City b) {
-        return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
+
+    private static double euclideanDistance(City city1, City city2) {
+        return Math.sqrt(Math.pow(city1.x - city2.x, 2) + Math.pow(city1.y - city2.y, 2));
     }
 
     private static class City {
         int id;
-        double x, y;
+        double x;
+        double y;
 
         City(int id, double x, double y) {
             this.id = id;

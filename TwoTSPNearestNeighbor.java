@@ -18,11 +18,15 @@ public class TwoTSPNearestNeighbor {
             int[] path1 = paths[0];
             int[] path2 = paths[1];
 
+            path1 = optimizeWith2Opt(path1, distanceMatrix);
+            path2 = optimizeWith2Opt(path2, distanceMatrix);
+
             int cost1 = calculateCost(path1, distanceMatrix);
             int cost2 = calculateCost(path2, distanceMatrix);
 
             System.out.println("Path 1: " + Arrays.toString(path1));
-            System.err.println("-----------------------------------------------------------");
+            System.out.println("-------------------------------");
+            System.out.println("\n\n\n");
             System.out.println("Path 2: " + Arrays.toString(path2));
             System.out.println("Total distance for salesman 1: " + cost1);
             System.out.println("Total distance for salesman 2: " + cost2);
@@ -71,10 +75,10 @@ public class TwoTSPNearestNeighbor {
 
         int currentCity1 = start1;
         int currentCity2 = start2;
-        
+
         visited[start1] = true;
         visited[start2] = true;
-        
+
         path1[pathIndex1++] = start1;
         path2[pathIndex2++] = start2;
 
@@ -100,7 +104,7 @@ public class TwoTSPNearestNeighbor {
                 currentCity1 = nearestNeighbor1;
                 visited[nearestNeighbor1] = true;
             }
-            
+
             if (nearestNeighbor2 != -1 && (nearestNeighbor1 == -1 || nearestDistance2 < nearestDistance1)) {
                 path2[pathIndex2++] = nearestNeighbor2;
                 currentCity2 = nearestNeighbor2;
@@ -112,6 +116,54 @@ public class TwoTSPNearestNeighbor {
         path2[pathIndex2++] = start2;
 
         return new int[][]{Arrays.copyOf(path1, pathIndex1), Arrays.copyOf(path2, pathIndex2)};
+    }
+
+    public static int[] optimizeWith2Opt(int[] path, int[][] graph) {
+        int n = path.length;
+        boolean improved = true;
+
+        while (improved) {
+            improved = false;
+
+            for (int i = 1; i < n - 2; i++) {
+                for (int j = i + 1; j < n - 1; j++) {
+                    int delta = calculate2OptGain(path, i, j, graph);
+                    if (delta < 0) {
+                        path = apply2OptSwap(path, i, j);
+                        improved = true;
+                    }
+                }
+            }
+        }
+
+        return path;
+    }
+
+    public static int calculate2OptGain(int[] path, int i, int j, int[][] graph) {
+        int n = path.length;
+        int a = path[i - 1];
+        int b = path[i];
+        int c = path[j];
+        int d = path[(j + 1) % n];
+
+        int currentCost = graph[a][b] + graph[c][d];
+        int newCost = graph[a][c] + graph[b][d];
+
+        return newCost - currentCost;
+    }
+
+    public static int[] apply2OptSwap(int[] path, int i, int j) {
+        int[] newPath = new int[path.length];
+        System.arraycopy(path, 0, newPath, 0, i);
+
+        int dec = 0;
+        for (int k = j; k >= i; k--) {
+            newPath[i + dec] = path[k];
+            dec++;
+        }
+
+        System.arraycopy(path, j + 1, newPath, j + 1, path.length - j - 1);
+        return newPath;
     }
 
     public static int calculateCost(int[] path, int[][] graph) {

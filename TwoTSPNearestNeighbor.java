@@ -1,5 +1,6 @@
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -8,7 +9,9 @@ import java.util.List;
 public class TwoTSPNearestNeighbor {
 
     public static void main(String[] args) {
+       
         String inputFile = "example-input-3.txt"; // Input file path
+        String outputFile = "output.txt"; // Output file path
         try {
             int[][] distanceMatrix = readInput(inputFile);
             int startCity1 = 0; // Starting city index for salesman 1
@@ -23,14 +26,19 @@ public class TwoTSPNearestNeighbor {
 
             int cost1 = calculateCost(path1, distanceMatrix);
             int cost2 = calculateCost(path2, distanceMatrix);
+            int totalCost = cost1 + cost2;
 
-            System.out.println("Path 1: " + Arrays.toString(path1));
-            System.out.println("-------------------------------");
-            System.out.println("\n\n\n");
-            System.out.println("Path 2: " + Arrays.toString(path2));
-            System.out.println("Total distance for salesman 1: " + cost1);
-            System.out.println("Total distance for salesman 2: " + cost2);
-            System.out.println("Total distance for both salesmen: " + (cost1 + cost2));
+            try (FileWriter writer = new FileWriter(outputFile)) {
+                writer.write(totalCost + "\n");
+                writer.write( cost1 + " " + (path1.length - 1) + "\n");
+                for(int i = 0 ; i < path1.length - 1 ; i++ )
+                 writer.write(path1[i] + "\n");
+                writer.write("\n");
+                writer.write(cost2 + " " + (path2.length-1) + "\n");
+                for(int i = 0 ; i < path2.length - 1; i++ )
+                 writer.write(path2[i] + "\n");
+                
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }

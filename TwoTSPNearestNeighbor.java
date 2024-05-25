@@ -10,22 +10,22 @@ public class TwoTSPNearestNeighbor {
 
     public static void main(String[] args) {
        
-        String inputFile = "example-input-3.txt"; // Input file path
-        String outputFile = "output.txt"; // Output file path
+        String inputFile = "test-input-4.txt"; // Input file path
+        String outputFile = "test-output-4.txt"; // Output file path
         try {
-            int[][] distanceMatrix = readInput(inputFile);
+            List<int[]> cities = readInput(inputFile);
             int startCity1 = 0; // Starting city index for salesman 1
             int startCity2 = 1; // Starting city index for salesman 2
 
-            int[][] paths = nearestNeighborForTwo(distanceMatrix, startCity1, startCity2);
+            int[][] paths = nearestNeighborForTwo(cities, startCity1, startCity2);
             int[] path1 = paths[0];
             int[] path2 = paths[1];
 
-            path1 = optimizeWith2Opt(path1, distanceMatrix);
-            path2 = optimizeWith2Opt(path2, distanceMatrix);
+            path1 = optimizeWith2Opt(path1, cities);
+            path2 = optimizeWith2Opt(path2, cities);
 
-            int cost1 = calculateCost(path1, distanceMatrix);
-            int cost2 = calculateCost(path2, distanceMatrix);
+            int cost1 = calculateCost(path1, cities);
+            int cost2 = calculateCost(path2, cities);
             int totalCost = cost1 + cost2;
 
             try (FileWriter writer = new FileWriter(outputFile)) {
@@ -37,14 +37,13 @@ public class TwoTSPNearestNeighbor {
                 writer.write(cost2 + " " + (path2.length-1) + "\n");
                 for(int i = 0 ; i < path2.length - 1; i++ )
                  writer.write(path2[i] + "\n");
-                
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    public static int[][] readInput(String inputFile) throws IOException {
+    public static List<int[]> readInput(String inputFile) throws IOException {
         List<int[]> cities = new ArrayList<>();
         BufferedReader reader = new BufferedReader(new FileReader(inputFile));
         String line;
@@ -58,24 +57,11 @@ public class TwoTSPNearestNeighbor {
         }
         reader.close();
 
+        return cities;
+    }
+
+    public static int[][] nearestNeighborForTwo(List<int[]> cities, int start1, int start2) {
         int numCities = cities.size();
-        int[][] distanceMatrix = new int[numCities][numCities];
-        for (int i = 0; i < numCities; i++) {
-            for (int j = 0; j < numCities; j++) {
-                int[] city1 = cities.get(i);
-                int[] city2 = cities.get(j);
-                distanceMatrix[i][j] = calculateDistance(city1[0], city1[1], city2[0], city2[1]);
-            }
-        }
-        return distanceMatrix;
-    }
-
-    public static int calculateDistance(int x1, int y1, int x2, int y2) {
-        return (int) Math.round(Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2)));
-    }
-
-    public static int[][] nearestNeighborForTwo(int[][] graph, int start1, int start2) {
-        int numCities = graph.length;
         boolean[] visited = new boolean[numCities];
         int[] path1 = new int[numCities + 1];
         int[] path2 = new int[numCities + 1];
@@ -97,13 +83,19 @@ public class TwoTSPNearestNeighbor {
             int nearestDistance2 = Integer.MAX_VALUE;
 
             for (int city = 0; city < numCities; city++) {
-                if (!visited[city] && graph[currentCity1][city] < nearestDistance1) {
-                    nearestNeighbor1 = city;
-                    nearestDistance1 = graph[currentCity1][city];
-                }
-                if (!visited[city] && graph[currentCity2][city] < nearestDistance2) {
-                    nearestNeighbor2 = city;
-                    nearestDistance2 = graph[currentCity2][city];
+                if (!visited[city]) {
+                    int distance1 = calculateDistance(cities.get(currentCity1), cities.get(city));
+                    int distance2 = calculateDistance(cities.get(currentCity2), cities.get(city));
+
+                    if (distance1 < nearestDistance1) {
+                        nearestNeighbor1 = city;
+                        nearestDistance1 = distance1;
+                    }
+
+                    if (distance2 < nearestDistance2) {
+                        nearestNeighbor2 = city;
+                        nearestDistance2 = distance2;
+                    }
                 }
             }
 
@@ -126,7 +118,7 @@ public class TwoTSPNearestNeighbor {
         return new int[][]{Arrays.copyOf(path1, pathIndex1), Arrays.copyOf(path2, pathIndex2)};
     }
 
-    public static int[] optimizeWith2Opt(int[] path, int[][] graph) {
+    public static int[] optimizeWith2Opt(int[] path, List<int[]> cities) {
         int n = path.length;
         boolean improved = true;
 
@@ -135,7 +127,7 @@ public class TwoTSPNearestNeighbor {
 
             for (int i = 1; i < n - 2; i++) {
                 for (int j = i + 1; j < n - 1; j++) {
-                    int delta = calculate2OptGain(path, i, j, graph);
+                    int delta = calculate2OptGain(path, i, j, cities);
                     if (delta < 0) {
                         path = apply2OptSwap(path, i, j);
                         improved = true;
@@ -147,15 +139,15 @@ public class TwoTSPNearestNeighbor {
         return path;
     }
 
-    public static int calculate2OptGain(int[] path, int i, int j, int[][] graph) {
+    public static int calculate2OptGain(int[] path, int i, int j, List<int[]> cities) {
         int n = path.length;
-        int a = path[i - 1];
-        int b = path[i];
-        int c = path[j];
-        int d = path[(j + 1) % n];
+        int[] a = cities.get(path[i - 1]);
+        int[] b = cities.get(path[i]);
+        int[] c = cities.get(path[j]);
+        int[] d = cities.get(path[(j + 1) % n]);
 
-        int currentCost = graph[a][b] + graph[c][d];
-        int newCost = graph[a][c] + graph[b][d];
+        int currentCost = calculateDistance(a, b) + calculateDistance(c, d);
+        int newCost = calculateDistance(a, c) + calculateDistance(b, d);
 
         return newCost - currentCost;
     }
@@ -169,16 +161,25 @@ public class TwoTSPNearestNeighbor {
             newPath[i + dec] = path[k];
             dec++;
         }
-
         System.arraycopy(path, j + 1, newPath, j + 1, path.length - j - 1);
         return newPath;
     }
 
-    public static int calculateCost(int[] path, int[][] graph) {
+    public static int calculateCost(int[] path, List<int[]> cities) {
         int cost = 0;
         for (int i = 0; i < path.length - 1; i++) {
-            cost += graph[path[i]][path[i + 1]];
+            cost += calculateDistance(cities.get(path[i]), cities.get(path[i + 1]));
         }
         return cost;
     }
+
+    public static int calculateDistance(int[] city1, int[] city2) {
+        int x1 = city1[0];
+        int y1 = city1[1];
+        int x2 = city2[0];
+        int y2 = city2[1];
+        return (int) Math.round(Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2)));
+    }
 }
+
+       

@@ -37,12 +37,12 @@ public class TwoTSPNearestNeighbor {
             // Write the results to the output file
             try (FileWriter writer = new FileWriter(outputFile)) {
                 writer.write(totalCost + "\n"); // Write total cost
-                writer.write(cost1 + " " + (path1.length - 1) + "\n"); // Write cost and number of cities for path1
-                for (int i = 0; i < path1.length - 1; i++) {
+                writer.write(cost1 + " " + (path1.length) + "\n"); // Write cost and number of cities for path1
+                for (int i = 0; i < path1.length; i++) {
                     writer.write(path1[i] + "\n"); // Write each city in path1
                 }
                 writer.write("\n");
-                writer.write(cost2 + " " + (path2.length - 1) + "\n"); // Write cost and number of cities for path2
+                writer.write(cost2 + " " + (path2.length) + "\n"); // Write cost and number of cities for path2
                 for (int i = 0; i < path2.length - 1; i++) {
                     writer.write(path2[i] + "\n"); // Write each city in path2
                 }
@@ -73,8 +73,8 @@ public class TwoTSPNearestNeighbor {
     public static int[][] nearestNeighborForTwo(List<int[]> cities, int start1, int start2) {
         int numCities = cities.size();
         boolean[] visited = new boolean[numCities]; // Array to keep track of visited cities
-        int[] path1 = new int[numCities + 1]; // Path for salesman 1
-        int[] path2 = new int[numCities + 1]; // Path for salesman 2
+        int[] path1 = new int[numCities]; // Path for salesman 1
+        int[] path2 = new int[numCities]; // Path for salesman 2
         int pathIndex1 = 0, pathIndex2 = 0;
 
         int currentCity1 = start1;
@@ -124,10 +124,7 @@ public class TwoTSPNearestNeighbor {
                 visited[nearestNeighbor2] = true; // Mark nearest neighbor as visited
             }
         }
-
-        path1[pathIndex1++] = start1; // Return to starting city for salesman 1 to complete the tour
-        path2[pathIndex2++] = start2; // Return to starting city for salesman 2 to complete the tour
-
+        
         return new int[][]{Arrays.copyOf(path1, pathIndex1), Arrays.copyOf(path2, pathIndex2)}; // Return the paths
     }
 
@@ -143,8 +140,8 @@ public class TwoTSPNearestNeighbor {
             // Iterate over all possible pairs of edges
             for (int i = 1; i < n - 2; i++) {
                 for (int j = i + 1; j < n - 1; j++) {
-                    int delta = calculate2OptGain(path, i, j, cities);
-                    if (delta < 0) {
+                    int gain = calculate2OptGain(path, i, j, cities);
+                    if (gain < 0) {
                         path = apply2OptSwap(path, i, j); // Apply the 2-opt swap
                         improved = true; // Set improved to true to continue optimization
                     }
